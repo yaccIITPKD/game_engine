@@ -55,7 +55,8 @@ string_from_cstring(Arena *arena, char *cstring)
 
 
 funcdef slice<string>
-strings_from_cstrings(Arena *arena, int count, char **cstrings) {
+strings_from_cstrings(Arena *arena, int count, char **cstrings)
+{
 	slice<string> result = alloc_slice(arena, string, count);
 
 	for (int i=0; i<count; ++i)
@@ -66,4 +67,14 @@ strings_from_cstrings(Arena *arena, int count, char **cstrings) {
 	}
 
 	return result;
+}
+
+funcdef string
+string_to_cstring(Arena *arena, string s)
+{
+	bytes data = alloc_slice(arena, u8, s.len + 1);
+	memcpy(data.raw, s.raw, s.len);
+	data[s.len] = '\0';
+
+	return string_from_bytes(data);
 }

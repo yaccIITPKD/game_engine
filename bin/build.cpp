@@ -4,10 +4,18 @@
 // like CMake, premake etc. which complicates our project
 // beyond what is required.
 
+
+// thirdparty
+
+#include "../base.cpp"
 #include "../os.cpp"
 #include "../arena.cpp"
 #include "../string.cpp"
+#include "../gfx.cpp"
 #include "../main.cpp"
+
+#include "../vendor/glad.c"
+
 
 #if OS_Windows && !DEBUG_BUILD
 

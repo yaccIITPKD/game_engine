@@ -3,7 +3,7 @@
 const u64 PAGE_SIZE = KB(4);
 
 funcdef Arena *
-arena_init(u64 reserve)
+arena_make(u64 reserve)
 {
 	void *mem = os_reserve(reserve);
 	if (!mem) {
@@ -23,7 +23,7 @@ arena_init(u64 reserve)
 }
 
 funcdef void
-Arena_deinit(Arena *arena) 
+arena_delete(Arena *arena) 
 {
 	if (arena == nullptr) return;
 
@@ -105,7 +105,8 @@ arena_free(Arena *arena)
 
 
 funcdef Temp
-temp_begin(Arena *arena) {
+temp_begin(Arena *arena)
+{
 	assert(arena);
 	
 	return Temp { arena, arena->used };
@@ -114,7 +115,8 @@ temp_begin(Arena *arena) {
 funcdef void
 temp_end(Temp temp)
 {
-	assert(temp.arena);
+	if (!temp.arena) return;
+
 	assert(temp.mark >= sizeof(Arena));
 	assert(temp.mark <= temp.arena->used);
 	
@@ -127,10 +129,11 @@ temp_end(Temp temp)
 // file handling and string handling functions.
 
 global u64    SCRATCH_SIZE   = MB(1);
-global Arena *global_scratch = arena_init(SCRATCH_SIZE);
+global Arena *global_scratch = arena_make(SCRATCH_SIZE);
 
 funcdef Arena *
-scratch(Temp *temp) {
+scratch(Temp *temp)
+{
 	if (temp != nullptr) {
 		*temp = temp_begin(global_scratch);
 	}
