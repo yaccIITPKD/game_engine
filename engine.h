@@ -373,4 +373,16 @@ funcdef void assets_deinit();
 
 funcdef slice<string> asset_fetch_shader_source(Asset shader, Arena *arena);
 
+//////////////
+// ~reehan @NOTE: image to binary
+
+struct Image {
+    s32 width;
+    s32 height;
+    s32 channels;
+    bytes data;
+};
+
+funcdef Image png_to_binary_data(Arena *arena, string path);
+
 #endif // ENGINE_H
