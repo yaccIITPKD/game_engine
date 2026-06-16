@@ -4,7 +4,13 @@
 funcdef void
 hot_reload_gamecode(Game_Code *code)
 {
-	OS_FileData data = os_file_data(S("./game.so"));
+#if OS_Windows
+	string lib_path = S("./game.dll");
+#elif OS_Linux
+	string lib_path = S("./game.so");
+#endif
+
+	OS_FileData data = os_file_data(lib_path);
 
     if (data.timestamp != code->timestamp) {
         game_unload_code(code);
@@ -13,7 +19,7 @@ hot_reload_gamecode(Game_Code *code)
         dur.milliseconds = 16.0f;
         os_time_sleep(dur);
 
-        bool ok = game_load_code(code, S("./game.so"));
+        bool ok = game_load_code(code, lib_path);
         assert(ok);
     }
 }

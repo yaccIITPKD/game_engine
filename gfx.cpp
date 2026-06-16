@@ -14,15 +14,15 @@ static struct {
 } gfx_ctx;
 
 static mat4
-mat4_ortho(f32 left, f32 right, f32 bottom, f32 top, f32 near, f32 far)
+mat4_ortho(f32 left, f32 right, f32 bottom, f32 top, f32 near_clip, f32 far_clip)
 {
 	mat4 m = {0};
 	m.m[0]  =  2.0f / (right - left);
 	m.m[5]  =  2.0f / (top - bottom);
-	m.m[10] = -2.0f / (far - near);
+	m.m[10] = -2.0f / (far_clip - near_clip);
 	m.m[12] = -(right + left) / (right - left);
 	m.m[13] = -(top + bottom) / (top - bottom);
-	m.m[14] = -(far + near)   / (far - near);
+	m.m[14] = -(far_clip + near_clip)   / (far_clip - near_clip);
 	m.m[15] =  1.0f;
 	return m;
 }
@@ -42,7 +42,6 @@ mat4_mul(mat4 a, mat4 b)
 	}
 	return out;
 }
-
 
 static mat4
 mat4_camera_view(vec2 position, vec2 offset, f32 scale)

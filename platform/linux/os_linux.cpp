@@ -63,7 +63,6 @@ os_time_sleep(OS_TimeDuration duration)
 	}
 }
 
-
 funcdef OS_FileData
 os_file_data(string path)
 {
