@@ -4,7 +4,7 @@
 funcdef void
 hot_reload_gamecode(Game_Code *code)
 {
-#if OS_Windows
+#if OS_Window
 	string lib_path = S("./game.dll");
 #elif OS_Linux
 	string lib_path = S("./game.so");
@@ -24,6 +24,7 @@ hot_reload_gamecode(Game_Code *code)
     }
 }
 
+
 funcdef void
 entry_point(slice<string> args)
 {
@@ -41,12 +42,10 @@ entry_point(slice<string> args)
 
 	Draw_Data draw_data = {};
 
-	slice<string> glsl = asset_fetch_shader_source(frame, Asset::Sprite_Shader);
-
-	gfx_init_draw_data(&draw_data, Draw::Triangles, glsl[0], glsl[1]);
+	gfx_init_draw_data(&draw_data, Draw::Triangles, Shader_Sprite);
 	defer(gfx_deinit_draw_data(&draw_data));
 
-	assets_init();
+	assets_init(frame);
 
 	Game_Code game = {};
 	Game_State game_state = {};
@@ -58,6 +57,13 @@ entry_point(slice<string> args)
 
 	game.init(&game_state);
 
+	u32 cursor_x = 1; // one pixel for white
+	u32 cursor_y = 0;
+	u32 row_height = 0;
+
+	draw_data.sprites[Sprite_Player].frames = 4;
+	draw_data.camera.scale = 4.0f;
+
 	while(!os_window_should_close(window))
 	{
 		arena_free(frame);
@@ -66,7 +72,7 @@ entry_point(slice<string> args)
 		OS_Input input = os_prepare_frame(window);
 
 		vec2 resolution = os_window_size(window);
-		draw_data.camera.offset = resolution.scale(0.5f);
+		draw_data.camera.offset = resolution.scale(0.5);
 
 		gfx_begin(resolution);
 

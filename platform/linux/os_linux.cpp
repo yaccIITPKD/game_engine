@@ -7,6 +7,7 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <libgen.h>
 
 funcdef void *
 os_reserve(u64 size)
@@ -245,4 +246,52 @@ os_unload_library(OS_Handle lib)
 {
 	if (lib.v)
 		dlclose((void *) lib.v);
+}
+
+funcdef void
+os_set_working_dir(string dir)
+{
+	if (!dir.raw || !dir.len) return;
+
+	local_persist char path[4098];
+	u64 len = dir.len;
+
+	if (len >= sizeof(path)) {
+		len = sizeof(path) - 1;
+	}
+
+	memcpy(path, dir.raw, len);
+	path[len] = '\0';
+
+	int result = chdir(path);
+}
+
+funcdef string
+os_get_working_dir(Arena *arena)
+{
+	Temp t0 = temp_begin(scratch(&arena, 1));
+	defer(temp_end(t0));
+
+	slice<char> temp_page = alloc_slice(t0.arena, char, KB(4));
+	char *cwd = getcwd(temp_page.raw, temp_page.len);
+
+	string str = { (u8 *) cwd, strlen(cwd) };
+	return string_copy(arena, str);
+}
+
+
+funcdef string
+os_get_exec_directory(Arena *arena)
+{
+	Temp t0 = temp_begin(scratch(&arena, 1));
+	defer(temp_end(t0));
+
+	slice<char> temp_page = alloc_slice(t0.arena, char, KB(4));
+	int count = readlink("/proc/self/exe", temp_page.raw, temp_page.len - 1);
+	temp_page[count] = '\0';
+
+	char *dir = dirname(temp_page.raw);
+
+	string str = { (u8 *) dir, (u64) strlen(dir) };
+	return string_copy(arena, str);
 }

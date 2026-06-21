@@ -128,12 +128,26 @@ temp_end(Temp temp)
 // allocations will be extremely useful when we implement
 // file handling and string handling functions.
 
-global u64    SCRATCH_SIZE   = MB(1);
-global Arena *global_scratch = arena_make(SCRATCH_SIZE);
+global u64    SCRATCH_SIZE   = KB(512);
+global Arena *global_scratch[2] = {
+	arena_make(SCRATCH_SIZE),
+	arena_make(SCRATCH_SIZE)
+};
 
 funcdef Arena *
 scratch(Arena **conflicts, u64 count)
 {
-	return global_scratch;
+	for (u64 i=0; i< 2; ++i) {
+		bool conflicting = false;
+		for (u64 j=0; j<count; ++j) {
+			if (global_scratch[i] == conflicts[j]) {
+				conflicting = true;
+				break;
+			}
+		}
+		
+		if (!conflicting)
+			return global_scratch[i];
+	}
+	return nullptr;
 }
-

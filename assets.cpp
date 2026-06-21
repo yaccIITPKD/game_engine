@@ -1,70 +1,58 @@
 #include "engine.h"
+
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_RECT_PACK_IMPLEMENTATION
+
 #include "vendor/stb_image.h"
-
-#if DEBUG_BUILD
-
-typedef u64 Asset_TimeStamp;
-struct Asset_Record {
-	OS_FileKind     kind;
-	Asset_TimeStamp last_edit;
-};
-
-funcdef string asset__get_path(Asset a) 
-{
-	switch (a) {
-		case Asset::Sprite_Shader : return S("./shaders/sprite.glsl");
-		case Asset::Screen_Shader : return S("./shaders/screen.glsl");
-		default: return S("");
-	}
-}
-
-#endif
+#include "vendor/stb_rect_pack.h"
 
 global struct 
 {
-#if DEBUG_BUILD
-	Asset_Record records[(u64) Asset::Count];
-#endif
-
-	list<Sprite> sprites;
 } asset_ctx;
 
 
 funcdef void
-assets_init()
+assets_init(Arena *scratch)
 {
+	//
+	// pack sprites
+	//
 
-#if DEBUG_BUILD
-	// fill out asset record ( debug info )
-	u64 asset_count = (u64) Asset::Count;
-	for (u64 i=0; i<asset_count; ++i) {
-		Asset asset = (Asset) i;
+	Temp temp = temp_begin(scratch);
+	defer(temp_end(temp));
 
-		string path = asset__get_path(asset);
-		if (!path.len)
-			continue;
+	stbrp_context ctx;
+	slice<stbrp_node> nodes = alloc_slice(temp.arena, stbrp_node, Sprite_Count);
+	stbrp_init_target(&ctx, ATLAS_SIZE, ATLAS_SIZE, nodes.raw, Sprite_Count);
 
-		OS_FileData data = os_file_data(path);
-		assert(data.flags & File_Exists);
+	slice<stbrp_rect> rects = alloc_slice(temp.arena, stbrp_rect, Sprite_Count);
+	slice<Image> images = alloc_slice(temp.arena, Image, Sprite_Count);
 
-		Asset_Record rec = {
-			data.kind,
-			data.timestamp,
-		};
+	for (u32 i = 0; i < Sprite_Count; i++) {
 
-		asset_ctx.records[i] = rec;
+		string path = SPRITE_PATHS[i];
+		images[i] = asset_fetch_image(temp.arena, (Sprite_Id) i);
+
+		rects[i].id = i;
+		rects[i].w = images[i].width + 2;
+		rects[i].h = images[i].height + 2; // + 2padding
 	}
-#endif
+	stbrp_pack_rects(&ctx, rects.raw, Sprite_Count);
+
+	for (u32 i = 0; i < Sprite_Count; i++) {
+		if (!rects[i].was_packed) {
+			printf("sprite '%.*s' was not packed\n", S_FMT(SPRITE_PATHS[i]));
+			continue;
+		}
+		gfx_blit_atlas(rects[i].x + 1, rects[i].y + 1, images[i].width, images[i].height, images[i].data, 1, (Sprite_Id) i);
+	}
 }
 
 funcdef slice<string>
-asset_fetch_shader_source(Arena *arena, Asset shader)
+asset_fetch_shader_source(Arena *arena, Shader_Id shader)
 {
 #if DEBUG_BUILD
-    assert(shader > Asset::Shader_Begin && shader < Asset::Shader_End);
-
-    string path = asset__get_path(shader);
+    string path = SHADER_PATHS[shader];
     string full_file = string_from_bytes(os_load_entire_file(arena, path));
 
     s64 v_index = -1;
@@ -107,40 +95,38 @@ asset_fetch_shader_source(Arena *arena, Asset shader)
 //////////////
 // ~reehan @NOTE: image to binary
 
-funcdef Image 
-asset_fetch_image(Arena *arena, Asset texture) 
+funcdef Image
+asset_fetch_image(Arena *arena, Sprite_Id sprite)
 {
 #if DEBUG_BUILD
-    assert(texture > Asset::Texture_Begin && texture < Asset::Texture_End);
+	int width;
+	int height;
+	int channels;
 
-    int width;
-    int height;
-    int channels;
-    
-    Temp t = temp_begin(scratch(&arena, 1));
-    defer(temp_end(t));
+	Temp t = temp_begin(scratch(&arena, 1));
+	defer(temp_end(t));
 
-	string path = asset__get_path(texture);
-    string cpath = string_to_cstring(t.arena,path);
+	string path = SPRITE_PATHS[sprite];
+	string cpath = string_to_cstring(t.arena,path);
 
-    u8 *data = stbi_load((char*)cpath.raw,&width,&height,&channels,0);
+	u8 *data = stbi_load((char*)cpath.raw,&width,&height,&channels,0);
 	defer(stbi_image_free(data));
 
-    if (!data){
-        return Image{};
-    }
-    
-    u64 buffer_size= (u64) width * height * channels;
-    Image img= {} ;
+	if (!data){
+		return Image{};
+	}
 
-    img.data = alloc_slice(arena,u8,buffer_size);
-    memcpy(img.data.raw,data,buffer_size);
+	u64 buffer_size = (u64) width * height * channels;
+	Image img= {} ;
 
-    img.width=width;
-    img.height=height;
-    img.channels=channels;
-    
-    return img;
+	img.data = alloc_slice(arena,u8,buffer_size);
+	memcpy(img.data.raw, data, buffer_size);
+
+	img.width=width;
+	img.height=height;
+	img.channels=channels;
+
+	return img;
 #else
 # error "asset_fetch_image implementation missing"
 #endif

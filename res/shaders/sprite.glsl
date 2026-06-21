@@ -24,6 +24,12 @@ in vec2 v_uv;
 
 out vec4 Frag_Color;
 
+uniform sampler2D u_atlas;
+
 void main() {
-	Frag_Color = v_color;
+	ivec2 texel = ivec2(floor(v_uv));
+	Frag_Color = v_color * texelFetch(u_atlas, texel, 0);
+
+	if (Frag_Color.a <= 0.1)
+		discard;
 }

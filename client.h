@@ -5,6 +5,28 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+//////////////////////////////////////////////////////////
+//           User Defined Asset Path Tables             //
+//////////////////////////////////////////////////////////
+
+#define Def_Sprites \
+	X(Sprite_White, "./sprite/white.png") \
+	X(Sprite_Player, "./sprite/player.png") \
+	X(Sprite_Box, "./sprite/box.png") \
+	X(Sprite_GroundTiles, "./sprite/ground_tiles.png") \
+	X(Sprite_Tree1, "./sprite/tree1.png") \
+	X(Sprite_Tree2, "./sprite/tree2.png") \
+	X(Sprite_Tree3, "./sprite/tree3.png") \
+	X(Sprite_Pillar1, "./sprite/pillar1.png") \
+	X(Sprite_Pillar2, "./sprite/pillar2.png") \
+	X(Sprite_Pillar3, "./sprite/pillar3.png") \
+
+#define Def_Shaders \
+	X(Shader_Sprite, "./shaders/sprite.glsl") \
+	X(Sprite_Screen, "./shaders/screen.glsl")
+
+
+
 //////////
 // ~gaureesh @NOTE: base types
 
@@ -13,6 +35,7 @@
 #include <string.h> // for memmove, memcpy etc. ( not for cstd string functions ).
 #include <stdarg.h> // for va_args.
 #include <stdio.h>  // standard io operations.
+#include <math.h>
 
 typedef uint8_t  u8;
 typedef  int8_t  s8;
@@ -100,7 +123,11 @@ struct vec3 {
 };
 
 struct vec4 {
-	f32 x, y, z, w;
+	f32 x, y, z, w; 
+
+	vec2 xy() const { return {x, y}; }
+	vec2 yz() const { return {y, z}; }
+	vec2 zw() const { return {z, w}; }
 };
 
 typedef struct {
@@ -232,6 +259,9 @@ enum Key_State : u8 {
 
 struct OS_Input {
 	u8 key_state[Key_Count];
+
+	vec2 cursor_pos;
+	vec2 cursor_delta;
 };
 
 enum class OS : s32 {
@@ -283,7 +313,40 @@ enum class OS_FileKind : u32 {
 //////////////
 // ~gaureesh @NOTE: render interface
 
+const u64 MAX_VERTICES = 4098;
+const u64 ATLAS_SIZE   = 4098;
+const u64 MAX_SPRITES  = 1024;
+
 typedef u32 color8; // in 0xFFBBGGAA format
+
+enum Align : u32 {
+	Top_Left,
+	Top_Center,
+	Top_Right,
+
+	Mid_Left,
+	Mid_Center,
+	Mid_Right,
+
+	Bottom_Left,
+	Bottom_Center,
+	Bottom_Right,
+};
+
+global const vec2 
+ALIGN_OFFSET[] {
+	vec2 {0.0f, 0.0f},
+	vec2 {0.5f, 0.0f},
+	vec2 {1.0f, 0.0f},
+
+	vec2 {0.0f, 0.5f},
+	vec2 {0.5f, 0.5f},
+	vec2 {1.0f, 0.5f},
+
+	vec2 {0.0f, 1.0f},
+	vec2 {0.5f, 1.0f},
+	vec2 {1.0f, 1.0f},
+};
 
 enum class Draw {
 	Triangles, Lines
@@ -301,8 +364,54 @@ struct Camera {
 	f32  scale;
 };
 
+funcdef inline vec2
+world_to_screen(const Camera &camera, vec2 world)
+{
+    return (world - camera.position).scale(camera.scale) + camera.offset;
+}
+
+funcdef inline vec2
+screen_to_world(const Camera &camera, vec2 screen)
+{
+    return (screen - camera.offset).scale(1.0f / camera.scale) + camera.position;
+}
+
 struct Draw_Data;
 typedef void (*Graphics_Draw_Proc)(Draw_Data *);
+
+enum Sprite_Id : u32 {
+#define X(name,path) name,
+	Def_Sprites
+#undef X
+	Sprite_Count
+};
+
+global const string 
+SPRITE_PATHS[Sprite_Count] = {
+#define X(name, path) S(path),
+	Def_Sprites
+#undef X
+};
+
+enum Shader_Id : u32  {
+#define X(name,path) name,
+	Def_Shaders
+#undef X
+	Shader_Count
+};
+
+global const string
+SHADER_PATHS[Shader_Count] = {
+#define X(name, path) S(path),
+	Def_Shaders
+#undef X
+};
+
+struct Sprite {
+	u32 x, y;
+	u32 w, h;
+	u32 frames;
+};
 
 struct Draw_Data {
 	Draw primitive;
@@ -310,18 +419,22 @@ struct Draw_Data {
 
 	list<Vertex> vertices;
 	list<u16>    indices;
+	slice<Sprite> sprites;
 
+	Graphics_Draw_Proc draw_proc; // to flush draw data
+								  // from user code
 	// gl specific data
 	u32 vao, vbo, ebo;
 	u32 shader_id;
-	Graphics_Draw_Proc draw_proc;
+	u32 texture_id;
 };
 
 ////////////////////////////////////////////////
 // interface from game to the engine
 
 struct Game_State {
-
+	Camera main_camera;
+	vec2 player_pos;
 };
 
 typedef void (*Init_Proc)(Game_State *);
@@ -335,26 +448,5 @@ struct Game_Code {
 };
 
 typedef Game_Code (*Load_Proc)();
-
-enum class Asset {
-	Shader_Begin,
-
-	Sprite_Shader,
-	Screen_Shader,
-
-	Shader_End,
-
-	Texture_Begin,
-
-	Texture_End,
-
-	Count,
-};
-
-struct Sprite {
-	u32 x, y;
-	u32 w, h;
-	u32 frame_count;
-};
 
 #endif

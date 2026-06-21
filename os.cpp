@@ -30,6 +30,11 @@ os_init()
 	if (os_ctx.initialized) return;
 	os_ctx.persist = arena_make(KB(4));
 	os_ctx.initialized = true;
+	
+	Temp t = temp_begin(scratch(0, 0));
+	defer(temp_end(t));
+
+	os_set_working_dir(os_get_exec_directory(t.arena));
 }
 
 funcdef void
@@ -133,8 +138,10 @@ os_prepare_frame(OS_Handle window)
 
 	OS_Input input = {};
 	RGFW_event event = {};
-	while (RGFW_window_checkEvent(win, &event)); // @NOTE: this does nothing now
-	
+
+	while (RGFW_window_checkEvent(win, &event))
+		;
+
 	for (u32 i = 0; i < key_map_len; ++i) {
 		if (RGFW_isKeyPressed(key_map[i].rgfw)) {
 			input.key_state[key_map[i].key] |= Key_Press;
@@ -149,6 +156,12 @@ os_prepare_frame(OS_Handle window)
 			input.key_state[Key_Any] |= Key_Release;
 		}
 	}
+
+	RGFW_getMouseVector(&input.cursor_delta.x, &input.cursor_delta.y);
+
+	s32 x, y;
+	RGFW_window_getMouse(win, &x, &y);
+	input.cursor_pos = { (f32) x, (f32) y };
 
 	return input;
 }

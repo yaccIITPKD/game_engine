@@ -1,5 +1,18 @@
 #include "engine.h"
 
+
+funcdef string
+string_copy(Arena *arena, string str)
+{
+	if (!str.len)
+		return S("");
+
+	bytes data = alloc_slice(arena, u8, str.len); 
+	memcpy(data.raw, str.raw, str.len);
+
+	return string_from_bytes(data);
+}
+
 funcdef string
 string_from_bytes(bytes data)
 {

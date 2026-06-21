@@ -290,3 +290,71 @@ os_time_sleep(OS_TimeDuration duration)
 
     Sleep(ms);
 }
+
+
+funcdef void
+os_set_working_dir(string dir)
+{
+	if (!dir.raw || !dir.len) return;
+
+	local_persist char path[4098];
+	u64 len = dir.len;
+
+	if (len >= sizeof(path)) {
+		len = sizeof(path) - 1;
+	}
+
+	memcpy(path, dir.raw, len);
+	path[len] = '\0';
+
+	_chdir(path);
+}
+
+funcdef string
+os_get_working_dir(Arena *arena)
+{
+	Temp t0 = temp_begin(scratch(&arena, 1));
+	defer(temp_end(t0));
+
+	slice<char> temp_page = alloc_slice(t0.arena, char, KB(4));
+
+	if (!_getcwd(temp_page.raw, (int)temp_page.len)) {
+		return {};
+	}
+
+	string str = {
+		(u8 *)temp_page.raw,
+		strlen(temp_page.raw),
+	};
+
+	return string_copy(arena, str);
+}
+
+funcdef string
+os_get_exec_directory(Arena *arena)
+{
+    Temp t0 = temp_begin(scratch(&arena, 1));
+    defer(temp_end(t0));
+
+    slice<char> buffer = alloc_slice(t0.arena, char, KB(4));
+
+    DWORD len = GetModuleFileNameA(NULL, buffer.raw, (DWORD)buffer.len);
+    if (len == 0)
+        return {};
+
+    buffer.raw[len] = '\0';
+
+    for (s64 i = (s64)len - 1; i >= 0; --i) {
+        if (buffer[i] == '\\' || buffer[i] == '/') {
+            buffer[i] = '\0';
+            break;
+        }
+    }
+
+    string str = {
+        (u8 *)buffer.raw,
+        (u64)strlen(buffer.raw),
+    };
+
+    return string_copy(arena, str);
+}

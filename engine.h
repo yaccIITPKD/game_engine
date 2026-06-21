@@ -79,9 +79,14 @@ funcdef OS_Handle   os_load_library(string path);
 funcdef void       *os_load_symbol(OS_Handle lib, const char *name);
 funcdef void        os_unload_library(OS_Handle lib);
 
+funcdef void   os_set_working_dir(string dir);
+funcdef string os_get_working_dir(Arena *arena);
+funcdef string os_get_exec_directory(Arena *arena);
+
 //////////////
 // ~gaureesh @NOTE: string
 
+funcdef string string_copy(Arena *arena, string str);
 funcdef string string_from_bytes(bytes data);
 funcdef string string_concat(Arena *arena, string a, string b);
 funcdef string string_format(Arena *arena, const char *fmt_string, ...);
@@ -128,10 +133,10 @@ struct Image {
     bytes data;
 };
 
-funcdef void          assets_init();
+funcdef void assets_init(Arena *scratch);
 
-funcdef slice<string> asset_fetch_shader_source(Arena *arena, Asset shader);
-funcdef Image         asset_fetch_image(Arena *arena, Asset texture);
+funcdef slice<string> asset_fetch_shader_source(Arena *arena, Shader_Id shader);
+funcdef Image         asset_fetch_image(Arena *arena, Sprite_Id sprite);
 
 //////////////////////////////
 // ~gaureesh @NOTE: gfx
@@ -139,9 +144,9 @@ funcdef Image         asset_fetch_image(Arena *arena, Asset texture);
 funcdef void gfx_init();
 funcdef void gfx_deinit();
 
-funcdef void gfx_init_draw_data(Draw_Data *data, Draw type, string vtx_shader, string frg_shader);
+funcdef void gfx_init_draw_data(Draw_Data *data, Draw type, Shader_Id shader);
 funcdef void gfx_deinit_draw_data(Draw_Data *data);
-
+funcdef void gfx_blit_atlas(u32 x, u32 y, u32 w, u32 h, bytes pixels, u32 frames, Sprite_Id spritesset);
 funcdef void gfx_reload_shader(Draw_Data *data, string vs, string fs);
 
 funcdef void gfx_begin(vec2 resolution);
